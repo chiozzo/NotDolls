@@ -27,8 +27,8 @@ namespace NotDolls.Controllers
     }
 
     // GET: api/values
-    [HttpGet]
-    public IActionResult GetInventoryByUser(int? InventoryId, int? GeekId, int? Year, string Name)
+    [HttpGet(Name = "GetInventory")]
+    public IActionResult GetInventory([FromQuery]int? InventoryId, [FromQuery]int? GeekId, [FromQuery]int? Year, [FromQuery]string Name)
     {
       if (!ModelState.IsValid)
       {
@@ -100,9 +100,18 @@ namespace NotDolls.Controllers
       {
         return BadRequest(ModelState);
       }
+
+      if (id != inventoryItemToUpdate.InventoryId)
+      {
+        return BadRequest();
+      }
+
       Inventory inventoryItem = _context.Inventory.Single(item => item.InventoryId == id);
+
       inventoryItemToUpdate.InventoryId = inventoryItem.InventoryId;
+
       _context.Inventory.Add(inventoryItemToUpdate);
+
       try
       {
         _context.SaveChanges();

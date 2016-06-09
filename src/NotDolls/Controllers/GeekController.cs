@@ -6,12 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 using NotDolls.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Cors;
 
 // For more information on enabling Web API for empty projects, visit http://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace NotDolls.Controllers
 {
   [Route("api/[controller]")]
+  [Produces("application/json")]
+  [EnableCors("AllowDevEnvironment")]
   public class GeekController : Controller
   {
     private NotDollsContext _context;
@@ -23,8 +26,8 @@ namespace NotDolls.Controllers
 
 
     // GET: api/values
-    [HttpGet]
-    public IActionResult Get()
+    [HttpGet(Name = "GetAllGeeks")]
+    public IActionResult Get([FromQuery]string username)
     {
       if (!ModelState.IsValid)
       {
@@ -32,17 +35,21 @@ namespace NotDolls.Controllers
       }
 
       // could also provide a sub-query for Figurines to return actual results instead of a link to another GET call
-      IQueryable<object> geeks = from user in _context.Geek
-                                 select new {
-                                   user.GeekId,
-                                   user.UserName,
-                                   user.EmailAddress,
-                                   user.CreatedDate,
-                                   user.Location,
-                                   Figureines = String.Format("api/Inventory/?GeekId=" + user.GeekId)
-                                 };
+      IQueryable<Geek> geeks = from user in _context.Geek
+                               select new Geek
+                               {
+                                 GeekId = user.GeekId,
+                                 UserName = user.UserName,
+                                 EmailAddress = user.EmailAddress,
+                                 CreatedDate = user.CreatedDate,
+                                 Location = user.Location,
+                                 FigurineHREF = String.Format("api/Inventory/?GeekId=" + user.GeekId)
+                               };
 
-      
+      if (username != null)
+      {
+        geeks = geeks.Where(g => g.UserName == username);
+      }
 
       if (geeks == null)
       {
@@ -53,7 +60,7 @@ namespace NotDolls.Controllers
     }
 
     // GET api/values/5
-    [HttpGet("{id}", Name ="GetGeek")]
+    [HttpGet("{id}", Name = "GetGeek")]
     public IActionResult Get(int id)
     {
       if (!ModelState.IsValid)
@@ -61,7 +68,7 @@ namespace NotDolls.Controllers
         return BadRequest(ModelState);
       }
 
-      Geek geek = _context.Geek.Single(item => item.GeekId == id);
+      Geek geek = _context.Geek.Single(m => m.GeekId == id);
 
       if (geek == null)
       {
@@ -79,7 +86,20 @@ namespace NotDolls.Controllers
       {
         return BadRequest(ModelState);
       }
+
+      IQueryable<Geek> existingUser = from geek in _context.Geek
+                                      where geek.UserName == newGeek.UserName
+                                      select geek;
+
+      int userExists = existingUser.Count<Geek>();
+      if (userExists > 0)
+      {
+        return new StatusCodeResult(StatusCodes.Status409Conflict);
+      }
+
+      //actually modifies newGeek to give GeekId a non-null value (property already exists due to ModelState casting)
       _context.Geek.Add(newGeek);
+
       try
       {
         _context.SaveChanges();
@@ -107,9 +127,18 @@ namespace NotDolls.Controllers
       {
         return BadRequest(ModelState);
       }
+
+      if (id != geekToUpdate.GeekId)
+      {
+        return BadRequest();
+      }
+
       Geek singleGeek = _context.Geek.Single(geek => geek.GeekId == id);
+
       geekToUpdate.GeekId = singleGeek.GeekId;
+
       _context.Geek.Add(geekToUpdate);
+
       try
       {
         _context.SaveChanges();
@@ -131,12 +160,24 @@ namespace NotDolls.Controllers
 
     // DELETE api/values/5
     [HttpDelete("{id}")]
-    public void Delete(int id)
+    public IActionResult Delete(int id)
     {
+      if (!ModelState.IsValid)
+      {
+        return BadRequest(ModelState);
+      }
+
       Geek geekToDelete = _context.Geek.Single(geek => geek.GeekId == id);
+
+      if (geekToDelete == null)
+      {
+        return NotFound();
+      }
 
       _context.Geek.Remove(geekToDelete);
       _context.SaveChanges();
+
+      return Ok(geekToDelete);
     }
 
     private bool GeekExists(int id)

@@ -13,6 +13,8 @@ namespace NotDolls.Models
     public string Location { get; set; }
     public DateTime CreatedDate { get; set; }
 
+    public string FigurineHREF { get; set; }
+
     // illustrates a many to one relationship
     public ICollection<Inventory> Figurines { get; set; }
   }

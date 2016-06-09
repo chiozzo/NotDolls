@@ -9,6 +9,7 @@ namespace NotDolls.Models
   {
     public int Inventory_ImageId { get; set; }
     public string Image { get; set; }
+    public string MetaData { get; set; }
     public int InventoryId { get; set; }
 
     // illustrates a foreign key relationship
